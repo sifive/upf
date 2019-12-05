@@ -1,6 +1,6 @@
 # upf
 
-[UPF](https://en.wikipedia.org/wiki/Unified_Power_Format) tools
+[IEEE1801 Unified Power Format](https://en.wikipedia.org/wiki/Unified_Power_Format) tools
 
 ![flow](flow.png)
 
@@ -11,3 +11,6 @@
   - [tcl](https://github.com/nukedzn/node-tcl)
   - [tcl-js](https://github.com/rubikscraft/tcl-js)
 * JSON -> TCL writer
+* UPF releated links
+  - http://www.p1801.org
+  
