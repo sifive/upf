@@ -8,5 +8,6 @@
   - Human readble spec
   - JSON schema
 * TCL interpreter
-  - https://github.com/nukedzn/node-tcl
+  - [tcl](https://github.com/nukedzn/node-tcl)
+  - [tcl-js](https://github.com/rubikscraft/tcl-js)
 * JSON -> TCL writer
