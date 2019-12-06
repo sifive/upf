@@ -1,0 +1,36 @@
+{
+  "name": "upf",
+  "version": "1.0.0",
+  "description": "Unified Power Format tools",
+  "main": "lib/index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "eslint lib test bin && nyc -r=text -r=lcov mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sifive/upf.git"
+  },
+  "keywords": [],
+  "author": "SiFive",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/sifive/upf/issues"
+  },
+  "homepage": "https://github.com/sifive/upf#readme",
+  "dependencies": {
+    "tcl-js": "^2.9.0"
+  },
+  "devDependencies": {
+    "@drom/eslint-config": "0.10.0",
+    "chai": "^4.2.0",
+    "eslint": "^5.16.0",
+    "mocha": "^6.2.2",
+    "nyc": "^14.0.0"
+  },
+  "eslintConfig": {
+    "extends": "@drom/eslint-config/eslint4/node8"
+  }
+}
