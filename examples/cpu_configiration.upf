@@ -1,0 +1,109 @@
+# Low-Power Control Ports
+# The logic ports required for switch control, retention control, and
+# switch control acknowledge are created.
+# It is allowed to use the logic_port in place of logic_net and so
+# logic_net is not explicitly created.
+create_logic_port lp_lSleep
+create_logic_port lp_rSleep
+create_logic_port lp_lReady
+create_logic_port lp_rReady
+create_logic_port lp_lRet
+create_logic_port lp_rRet
+
+# Retention Strategy
+# Retention policy is created with the retention list specified in
+# constraint UPF. PDCPU.ret supply handle is used as retention supply
+# as specified in the constraint UPF. Control port lp_lRet is used as
+# retention control signal.
+set_retention retCpu \
+  -domain           PDCPU \
+  -retention_supply PDCPU.ret \
+  -save_signal      {lp_lRet negedge} \
+  -restore_signal   {lp_lRet posedge} \
+  -elements         cpuRetList
+
+# Memory-Related Configuration
+# List of memory instances in CPU
+set l1MemInstances [list \
+  u_l1tag_ram \
+  u_l1data_ram \
+]
+
+# The memory hard IPs instantiated in the CPU support power gating
+# and retention. The memory has two primary power ports, VDDPE and VDDCE.
+# To make supply connection simple, two new supply set handles mem_vddc
+# and mem_vddp are updated to PDCPU. mem_vddc will be associated to
+# VDDCE of all the memories and mem_vddp will be associated to VDDPE
+# of all the memories in the CPU.
+create_power_domain PDCPU -update \
+  -supply {mem_vddc} \
+  -supply {mem_vddp}
+
+# Apply power model to each macro instance.
+# UPF power model is overlaid over the Liberty model of the memory.
+# In applying power model, the supply sets defined in the memory
+# power model are associated to the supply set handles defined in the
+# power domain.
+apply_power_model memPwrModel -elements $l1MemInstances \
+  -supply_map {{ss_vddpe PDCPU.mem_vddp} \
+               {ss_vddce PDCPU.mem_vddc}}
+# When CPU is in OFF state, all memories shall be in OFF state.
+# When CPU is in RET state, all memories shall be in RET state.
+# When CPU is in ON state, memories can be in one of ON, RET, OFF
+# state but all memories shall be in the same state.
+# To enforce power state over a collection of lower level instances,
+# create a group and set power state of the group based on the
+# power state of the lower level instances.
+create_power_state_group L1MEMS
+
+# Create power states for the group created.
+# Power state of the group is such that each of the instance
+# in the group are in the same power state as the group itself.
+add_power_state –group L1MEMS \
+  -state {ON  -logic_expr {u_l1tag_ram==ON  && u_l1data_ram==ON }} \
+  -state {RET -logic_expr {u_l1tag_ram==RET && u_l1data_ram==RET}} \
+  -state {OFF -logic_expr {u_l1tag_ram==OFF && u_l1data_ram==OFF}}
+
+# Update power state of the parent domain with the power state of
+# the group. When CPU is in ON state, the L1MEMS can be in one of ON,
+# RET or OFF.
+# Use of logic_expr {L1MEMS==ON || L1MEMS==RET || L1MEMS==OFF} would
+# result in an indefinite state that cannot be used to update higher
+# level states. To avoid indefinite state, the different ON states
+# are implemented as refinement of PDCPU ON state.
+# The hierarchical state names ON.L1ON, ON.L1RET, and ON.L1OFF implicitly
+# include the term PDCPU==ON.
+add_power_state PDCPU -domain -update \
+  -state {ON.L1ON   -logic_expr {L1MEMS==ON }} \
+  -state {ON.L1RET  -logic_expr {L1MEMS==RET}} \
+  -state {ON.L1OFF  -logic_expr {L1MEMS==OFF}} \
+  -state {RET       -logic_expr {L1MEMS==RET}} \
+  -state {OFF       -logic_expr {L1MEMS==OFF}}
+
+# Power State logic_expr Update for Supply Sets
+# The logic expression that defines the ON and OFF state of the
+# supply set is updated.
+# ON and OFF state are deferred power states that are now being
+# updated. Since the pre-defined deferred power states are being
+# updated -update is required.
+add_power_state -supply PDCPU.primary -update \
+  -state {ON  -logic_expr {lp_lSleep == 1}}\
+  -state {OFF -logic_expr {lp_lSleep == 0}}
+
+# The supplies support nominal, over-drive, under-drive voltage conditions
+# NOM, OD, UD are refined power states of ON state
+
+add_power_state -supply PDCPU.primary -update \
+  -state {ON.NOM -logic_expr {dynControl == 2’b00}}\
+  -state {ON.OD  -logic_expr {dynControl == 2’b01}}\
+  -state {ON.UD  -logic_expr {dynControl == 2’b10}}
+
+add_power_state -supply PDCPU.ret -update \
+  -state {ON.NOM -logic_expr {dynControl == 2’b00}}\
+  -state {ON.OD  -logic_expr {dynControl == 2’b01}}\
+  -state {ON.UD  -logic_expr {dynControl == 2’b10}}
+
+add_power_state -supply PDCPU.aon -update \
+  -state {ON.NOM -logic_expr {dynControl == 2’b00}}\
+  -state {ON.OD  -logic_expr {dynControl == 2’b01}}\
+  -state {ON.UD  -logic_expr {dynControl == 2’b10}}

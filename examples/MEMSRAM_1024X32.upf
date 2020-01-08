@@ -1,0 +1,61 @@
+# A memory power model named memPwrModel is created for the memory
+# model MEMSRAM_1024X32
+define_power_model memPwrModel -for MEMSRAM_1024X32 {
+
+# Since the hard IP is a macro as defined in the Liberty, the
+# design attribute UPF_is_hard_macro is set on the model.
+set_design_attributes -models MEMSRAM_1024X32 -is_hard_macro TRUE
+
+# VDDPI is internal supply net specified in the Liberty that is
+# switched off when memory is in OFF or RET state
+# Access internal_power pin VDDPI and create a supply set with the
+# internal power pin and ground.
+create_supply_net VDDPI
+
+create_supply_set ss_vddpi \
+  -function {power  VDDPI} \
+  -function {ground VSSE}
+
+# Create supply set that bundles the VDDPE and VSSE of memory
+create_supply_set ss_vddpe \
+  -function {power  VDDPE} \
+  -function {ground VSSE}
+
+# Create supply set that bundles the VDDCE and VSSE of memory
+create_supply_set ss_vddce \
+  -function {power  VDDCE} \
+  -function {ground VSSE}
+
+# Create power switch to model the internal switch of the memory
+create_power_switch sw_vddp \
+  -input_supply_port  {sw_in     VDDPE} \
+  -output_supply_port {sw_out    ss_vddpi.power} \
+  -control_port       {sw_ctrl   PGEN} \
+  -on_state           {on_state  sw_in {!sw_ctrl}} \
+  -off_state          {off_state {sw_ctrl}}
+
+# Having defined a supply set ss_vddpi (with VDDPI as power and
+# VSSE as ground), predefined power states ON and OFF of the supply set
+# can be updated appropriately.
+# This is effectively setting power states on VDDPI
+add_power_state -supply ss_vddpi -update \
+  -state {ON -logic_expr {PGEN == 1} \
+  -supply_expr {power=={FULL_ON 0.6} && ground=={FULL_ON 0}}} \
+  -state {OFF -logic_expr {PGEN == 0} \
+  -supply_expr {power==OFF           && ground=={FULL_ON 0}}}
+
+# With the power states of the supply set and the state of control
+# pins of macro, the power states of the macro can be defined.
+add_power_state -model MEMSRAM_1024X32 \
+  -state {ON  -logic_expr {ss_vddpi==ON           }} \
+  -state {RET -logic_expr {ss_vddpi==OFF && RET==1}} \
+  -state {OFF -logic_expr {ss_vddpi==OFF && RET==0}} \
+  -complete
+
+# Refine power state ON to create a power state LS such that
+# in LS state the instance is in ON state and an additional condition
+# is met
+add_power_state -model MEMSRAM_1024X32 -update \
+  -state {ON.LS -logic_expr {MEMSRAM_1024X32==ON && RET==1}}
+
+}

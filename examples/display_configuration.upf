@@ -1,0 +1,18 @@
+# LP Control Ports in RTL
+create_logic_port lp_regCtrl
+
+# PHY Related Configuration
+# Load the power model of PHY.
+# The supplies defined in the parent power model are associated to
+# the supplies defined in the power model.
+apply_power_model phyPwrModel -elements u_phy \
+  -supply_map {{PDREG.ss_regin PDDISP.aon} \
+               {PDREG.ss_regout PDDISP.primary}}
+  -port_map {regCtrl lp_regCtrl}
+
+# Update power state of PDDISP with state of PDPHY.
+# PDPHY will be ON when PDDISP is ON.
+# PDPHY will be OFF when PDDISP is OFF.
+add_power_state -domain PDDISP -update \
+  -state {ON  -logic_expr {u_phy/PDPHY==ON }} \
+  -state {OFF -logic_expr {u_phy/PDPHY==OFF}}

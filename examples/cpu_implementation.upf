@@ -1,0 +1,134 @@
+# Supply Ports, Supply Nets
+# VCPU is the supply voltage for CPU
+create_supply_port -direction in VCPU
+create_supply_port -direction in VRET
+create_supply_port -direction in VSS
+create_supply_net VCPU
+create_supply_net VRET
+create_supply_net VSS
+create_supply_net VCPU_sw
+
+
+# Create supply set handle aon in the PDCPU domain.
+create_power_domain PDCPU -update \
+  -supply {aon}
+
+# Associate supply nets to supply set functions
+create_supply_set PDCPU.aon \
+  -function {power VCPU} \
+  -function {ground VSS}
+
+create_supply_set PDCPU.primary -update \
+  -function {power VCPU_sw} \
+  -function {ground VSS}
+
+create_supply_set PDCPU.ret -update \
+  -function {power VRET} \
+  -function {ground VSS}
+
+# Power Switches
+create_power_switch sw_CPU \
+  -input_supply_port  {sw_in PDCPU.aon.power} \
+  -output_supply_port {sw_out PDCPU.primary.power} \
+  -control_port       {sw_ctrl lp_lSleep} \
+  -on_state           {on_state sw_in {sw_ctrl}} \
+  -off_state          {off_state {!sw_ctrl}} \
+  -supply_set         PDCPU.aon \
+  -domain PDCPU
+
+# Associate supply nets to memory supply set functions.
+# This association connects all the memory VDDCE, VDDPE supply ports
+# to VCPU supply port, and memory VSSE supply port to VSS.
+# Explicit connection of supply ports using connect_supply_net can
+# also be done.
+# The standard allows both supply association and supply net
+# connection to specified together.
+create_supply_set PDCPU.mem_vddp -update \
+  -function {power VCPU} \
+  -function {ground VSS}
+
+create_supply_set PDCPU.mem_vddc -update \
+  -function {power VCPU} \
+  -function {ground VSS}
+
+# Power State supply_expr Update for Supply Sets
+# VCPU, VRET supplies support voltage scaling
+# With 0.7 V being nominal, 1.05 being over-drive, and 0.6 being under-drive
+
+add_power_state -supply PDCPU.primary -update \
+  -state {ON.NOM  {-supply_expr \
+              {power=={FULL_ON 0.70} && ground=={FULL_ON 0}}}} \
+  -state {ON.OD   {-supply_expr \
+              {power=={FULL_ON 1.05} && ground=={FULL_ON 0}}}} \
+  -state {ON.UD   {-supply_expr \
+              {power=={FULL_ON 0.55} && ground=={FULL_ON 0}}}} \
+  -state {OFF     {-supply_expr \
+              {power==OFF            && ground=={FULL_ON 0}}}}
+
+add_power_state -supply PDCPU.ret -update \
+  -state {ON.NOM  {-supply_expr \
+              {power=={FULL_ON 0.70} && ground=={FULL_ON 0}}}} \
+  -state {ON.OD   {-supply_expr \
+              {power=={FULL_ON 1.05} && ground=={FULL_ON 0}}}} \
+  -state {ON.UD   {-supply_expr \
+              {power=={FULL_ON 0.55} && ground=={FULL_ON 0}}}} \
+  -state {OFF {-supply_expr \
+              {power==OFF            && ground=={FULL_ON 0}}}}
+
+add_power_state -supply PDCPU.aon -update \
+  -state {ON.NOM {-supply_expr \
+              {power=={FULL_ON 0.70} && ground=={FULL_ON 0}}}}
+  -state {ON.OD {-supply_expr \
+              {power=={FULL_ON 1.05} && ground=={FULL_ON 0}}}} \
+  -state {ON.UD {-supply_expr \
+              {power=={FULL_ON 0.55} && ground=={FULL_ON 0}}}} \
+
+# The VRET voltage is derived from the VCPU voltage within the SOC.
+# But at the CPU implementation, this derived supply information
+# need to be specified as supplies VCPU and VRET are correlated.
+set_correlated -sets PDCPU.primary PDCPU.ret
+
+# VCPU, VRET supplies have a variation of 5% in the lower side
+# and 10% in the higher side
+set_variation -supply {PDCPU.primary PDCPU.ret PDCPU.aon} -range {0.95 1.1}
+# No level-shifters are required in implementation of PDCPU.
+# The supplies input to CPU are VCPU and VRET that have same voltage
+# conditions and are correlated.
+
+# Terminal boundary model for CPU hardened macro
+# Note that tools will ignore the driver/receiver attributes
+# when the actual driver and receiver for the ports are available
+# in the design.
+
+# The external environment conditions are required for the implementation
+# of CPU as a soft macro
+# The external environment conditions are defined based on the
+# supply sets available in PDCPU
+set_port_attributes -ports \
+  [find_objects . -pattern * -object_type port -direction in] \
+  -exclude_ports {lp_lSleep lp_rSleep lp_lRet lp_rRet} \
+  -driver_supply PDCPU.primary
+
+set_port_attributes -ports \
+  {lp_lSleep lp_rSleep lp_lRet lp_rRet} -driver_supply PDCPU.aon
+
+set_port_attributes -ports \
+  [find_objects . -pattern * -object_type port -direction out] \
+  -receiver_supply PDCPU.primary
+
+# When the UPF for CPU is loaded in MPCORE implementation context,
+# the internals of PDCPU are not available as the CPU has been
+# hardened and treated as a leaf cell. In the higher implementation
+# context, the CPU internal environment attributes are required.
+set_port_attributes -ports \
+  [find_objects . -pattern * -object_type port -direction out] \
+  -driver_supply PDCPU.primary
+
+set_port_attributes -ports \
+  [find_objects . -pattern * -object_type port -direction in] \
+  -exclude_ports {lp_lSleep lp_rSleep lp_lRet lp_rRet} \
+  -receiver_supply PDCPU.primary
+
+set_port_attributes -ports \
+  {lp_lSleep lp_rSleep lp_lRet lp_rRet} \
+  -receiver_supply PDCPU.aon

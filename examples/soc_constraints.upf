@@ -1,0 +1,57 @@
+# Variable Declarations
+# List of ports that have sink in the PDAON
+set socAonInputs [list \
+  SYSPLLCLK \
+  PORESETn \
+  TDI \
+  nTRST \
+]
+
+# Power Domains
+# SoC has two power domains: PDSOC and PDAON.
+# primary is the supply as defined in the standard.
+# ret is the supply used as the back-up supply for the retention FFs.
+create_power_domain PDSOC \
+  -elements {.} \
+  -supply {primary} \
+  -supply {aon}
+
+create_power_domain PDAON \
+  -elements u_pcu \
+  -supply {primary}
+
+# Load Lower Level UPF of the Design
+# The lower level UPFs may include soft IPs, hard macro, and soft macro.
+# In this example, there are two soft IPs. Each of the soft IPs in this
+# example includes soft marco and/or hard macro that have their own UPF.
+load_upf mpcore.upf -scope u_mpcore
+load_upf display.upf -scope u_display
+
+# Power States - AON
+# The pre-defined deferred state OFF for supply set primary is defined
+# as illegal as this supply cannot be OFF.
+add_power_state -supply PDAON.primary -update \
+  -state {OFF -illegal}
+
+add_power_state -domain PDAON \
+  -state {ON -logic_expr {PDAON.primary==ON}}
+
+# Power States - SOC
+# The pre-defined deferred state OFF for supply set aon is defined
+# as illegal as this supply cannot be OFF.
+add_power_state -supply PDSOC.aon -update \
+  -state {OFF -illegal}
+
+add_power_state -domain PDSOC \
+  -state {RUN   -logic_expr {PDSOC.aon==ON && PDSOC.primary==ON }} \
+  -state {SLEEP -logic_expr {PDSOC.aon==ON && PDSOC.primary==OFF}}
+
+# When PDSOC is in RUN or SLEEP state, PDAON must be ON.
+add_power_state -domain PDSOC -update \
+  -state {RUN   -logic_expr {PDAON==ON}} \
+  -state {SLEEP -logic_expr {PDAON==ON}}
+
+# When PDSOC is in SLEEP state, PDMPCORE and PDDISP must be OFF.
+add_power_state -domain PDSOC -update \
+  -state {SLEEP -logic_expr {u_mpcore/PDMPCORE==OFF && \
+                             u_display/PDDISP==OFF}}

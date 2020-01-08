@@ -1,0 +1,51 @@
+# Variable Declarations
+# List of CPU output ports to be clamped 1 when CPU is OFF.
+# This list shall be used to define port attributes on the ports that
+# shall determine the clamp value for isolation policy.
+set cpuClamp1 [list \
+  commtx_o \
+  afreadym_o \
+  ncommirq_o \
+]
+
+# Power Domains
+# CPU consists of only one power domain PDCPU. The current scope is the
+# domain top.
+# Two supply set handles primary and ret are defined in PDCPU
+# primary is the supply as defined in the standard
+# ret is the supply used as the back-up supply for the retention FFs
+create_power_domain PDCPU -elements {.} \
+  -supply {primary} \
+  -supply {ret}
+
+# Port Attributes for Isolation
+# By defining port attributes on the output ports, the clamp values
+# are set.
+# All the output ports except the list specified by $cpuClamp1 are
+# set to clamp value 0
+# Ports specified by $cpuClamp1 are set to clamp value 1
+set_port_attributes -model {.} -ports \
+  [find_objects . -pattern * -object_type port -direction out] \
+  -exclude_ports ${cpuClamp1} -clamp_value 0
+set_port_attributes -model {.} -ports "$cpuClamp1" -clamp_value 1
+
+# Retention Elements
+# If the CPU is set to retention, then the list of instances specified
+# in the cpuRetList must be retained.
+# This retention list shall be used in the retention policy specified
+# in the configuration UPF
+set_retention_elements cpuRetList \
+  -elements {u_cpu_noram}
+
+# Power State
+# PDCPU: The PDCPU supports three power states ON, RET, OFF
+# In the ON state, supply sets primary and ret are ON
+# In the RET state, supply set ret is ON and primary is OFF
+# In the OFF state, both supply sets are OFF
+# Note:
+# The ON and OFF states of the supply sets are the deferred power
+# states defined by the standard.
+add_power_state -domain PDCPU \
+  -state {ON  -logic_expr {PDCPU.ret==ON  && PDCPU.primary==ON }} \
+  -state {RET -logic_expr {PDCPU.ret==ON  && PDCPU.primary==OFF}} \
+  -state {OFF -logic_expr {PDCPU.ret==OFF && PDCPU.primary==OFF}}

@@ -1,0 +1,74 @@
+# Variable Declarations
+# List of MPCORE output ports to be clamped 1 when MPCORE is OFF.
+# This list shall be used to define port attributes on the ports that
+# shall determine the clamp value for isolation policy.
+set coreClamp1 [list \
+  IRQn \
+  FIQn \
+  L2ACCEPTn \
+]
+
+# Power Domains
+# MPCORE consists of only one power domain PDMPCORE. The current scope
+# is the domain top.
+# Two supply set handles, primary and ret, are defined in PDMPCORE:
+# primary is the supply as defined in the standard;
+# ret is the supply used as the back-up supply for the retention FFs.
+create_power_domain PDMPCORE -elements {.} \
+  -supply {primary} \
+  -supply {ret}
+
+# Port Attributes for Isolation
+# All the output ports except the list specified by $coreClamp1 are
+# set to clamp value 0.
+# Ports specified by $coreClamp1 are set to clamp value 1.
+
+set_port_attributes -model {.} -ports \
+  [find_objects . -pattern * -object_type port -direction out] \
+  -exclude_ports ${coreClamp1} -clamp_value 0
+set_port_attributes -model {.} -ports "$coreClamp1" -clamp_value 1
+
+# Load UPF for Lower Level IPs
+# The UPF of CPU that is hardened is loaded.
+# Note:
+# If UPF_is_soft_macro attribute is set for the cpu, only the higher
+# power domain is loaded ignoring all internals of the UPF. The terminal
+# boundary conditions defined in the CPU UPF are used to model the
+# internals of the CPU.
+# If UPF_is_soft_macro attribute is not set for the cpu, the cpu UPF
+# is used to completely model the power intent of cpu.
+# The constraints for MPCORE does not have information whether the cpu
+# is a soft_macro or not.
+load_upf cpu.upf -scope u_cpu0
+load_upf cpu.upf -scope u_cpu1
+
+# Retention Elements
+# The list of instances that can be retained if the MPCORE
+# is put into retention mode is specified in the coreRetList.
+# This retention list shall be used in the retention policy specified
+# in the configuration UPF.
+set_retention_elements coreRetList \
+  -elements {u_core_noram}
+
+# Power State
+# PDMPCORE: The PDMPCORE supports three power states: ON, RET, OFF.
+# In the ON state, supply sets primary and ret are ON.
+# In the RET state, supply set ret is ON and primary is OFF.
+# In the OFF state, both supply sets are OFF.
+# Note:
+# The ON and OFF states of the supply sets are the deferred power
+# states defined by the standard.
+add_power_state -domain PDMPCORE \
+  -state {ON  -logic_expr{PDMPCORE.ret==ON  && PDMPCORE.primary==ON }}\
+  -state {RET -logic_expr{PDMPCORE.ret==ON  && PDMPCORE.primary==OFF}}\
+  -state {OFF -logic_expr{PDMPCORE.ret==OFF && PDMPCORE.primary==OFF}}
+
+# In the RET and OFF power state, the cpu0 and cpu1 shall be in OFF
+# state. Update PDMPCORE state with state of PDCPU.
+add_power_state -domain PDMPCORE -update \
+  -state {RET -logic_expr {cpu0/PDCPU==OFF}} \
+  -state {OFF -logic_expr {cpu0/PDCPU==OFF}}
+
+add_power_state -domain PDMPCORE -update \
+  -state {RET -logic_expr {cpu1/PDCPU==OFF}} \
+  -state {OFF -logic_expr {cpu1/PDCPU==OFF}}

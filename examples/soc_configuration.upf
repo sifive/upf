@@ -1,0 +1,87 @@
+# LP Control nets to make connections from power control unit to
+# hard/soft macros
+create_logic_net lp_lSleep
+create_logic_net lp_lSleepCpu0
+create_logic_net lp_lSleepCpu1
+create_logic_net lp_lSleepDisp
+create_logic_net lp_rSleepCpu0
+create_logic_net lp_rSleepCpu1
+create_logic_net lp_lRetCpu0
+create_logic_net lp_lRetCpu1
+create_logic_net lp_rRetCpu0
+create_logic_net lp_rRetCpu1
+create_logic_net lp_isoCpu0
+create_logic_net lp_isoCpu1
+create_logic_net lp_isoDisp
+create_logic_net lp_isoAon
+create_logic_net lp_lSleepL2
+create_logic_net lp_rSleepL2
+create_logic_net lp_rReadyL2
+create_logic_net lp_rRetL2
+
+# Connection of the power control ports of macros to the power control
+# unit are explicitly done.
+connect_logic_net lp_lSleepCpu0 \
+  -ports u_pcu/LSLEEPCPU0 u_mpcore/lp_lSleepCpu0
+connect_logic_net lp_lSleepCpu1 \
+  -ports u_pcu/LSLEEPCPU1 u_mpcore/lp_lSleepCpu1
+connect_logic_net lp_rSleepCpu0 \
+  -ports u_pcu/RSLEEPCPU0 u_mpcore/lp_rSleepCpu0
+connect_logic_net lp_rSleepCpu1 \
+  -ports u_pcu/RSLEEPCPU1 u_mpcore/lp_rSleepCpu1
+connect_logic_net lp_lRetCpu0 \
+  -ports u_pcu/LRETCPU0 u_mpcore/lp_lRetCpu0
+connect_logic_net lp_lRetCpu1 \
+  -ports u_pcu/LRETCPU1 u_mpcore/lp_lRetCpu1
+connect_logic_net lp_rRetCpu0 \
+  -ports u_pcu/RRETCPU0 u_mpcore/lp_rRetCpu0
+connect_logic_net lp_rRetCpu1 \
+  -ports u_pcu/RRETCPU1 u_mpcore/lp_rRetCpu1
+connect_logic_net lp_isoCpu0 \
+  -ports u_pcu/ISOCPU0 u_mpcore/lp_isoCpu0
+connect_logic_net lp_isoCpu1 \
+  -ports u_pcu/ISOCPU1 u_mpcore/lp_isoCpu1
+connect_logic_net lp_lSleepL2 \
+  -ports u_pcu/LSLEEPL2 u_mpcore/lp_lSleep
+connect_logic_net lp_rSleepL2 \
+  -ports u_pcu/RSLEEPL2 u_mpcore/lp_rSleep
+connect_logic_net lp_rReadyL2 \
+  -ports u_pcu/RREADYL2 u_mpcore/lp_rReady
+connect_logic_net lp_rRetL2 \
+  -ports u_pcu/RRETL2 u_mpcore/lp_rRet
+connect_logic_net lp_lSleep     -ports u_pcu/LSLEEP
+connect_logic_net lp_lSleepDisp -ports u_pcu/LSLEEPDISP
+connect_logic_net lp_isoDisp    -ports u_pcu/ISODISP
+connect_logic_net lp_rSleepL2   -ports u_pcu/RSLEEPL2
+connect_logic_net lp_rRetL2     -ports u_pcu/RRETL2
+connect_logic_net lp_isoAon     -ports u_pcu/ISOAON
+# Isolation Strategy
+# AON - Isolation for all inputs of PDAON that have sink in PDAON
+set_isolation isoAonIn0 \
+  -domain PDAON \
+  -applies_to inputs \
+  -sink PDAON.primary \
+  -clamp_value 0 \
+  -isolation_signal ln_isoAon \
+  -isolation_sense high
+
+# Display - Isolation for Display Outputs
+set_isolation isoDispOut \
+  -domain u_display/PDDISP \
+  -source u_display/PDDISP.primary \
+  -sink PDSOC.primary \
+  -isolation_signal lp_lIsoDisp \
+  -isolation_sense low
+
+# MPCORE - Isolation for mpcore Outputs
+set_isolation isoMpcoreOut \
+  -domain u_mpcore/PDMPCORE \
+  -source u_mpcore/PDMPCORE.primary \
+  -sink PDSOC.primary \
+  -isolation_signal lp_lIsoMpcore \
+  -isolation_sense low
+
+# Power State
+add_power_state -supply PDSOC.primary -update \
+  -state {ON  -logic_expr {ln_lSleep==0}} \
+  -state {OFF -logic_expr {ln_lSleep==1}}
