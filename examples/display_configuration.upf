@@ -7,7 +7,7 @@ create_logic_port lp_regCtrl
 # the supplies defined in the power model.
 apply_power_model phyPwrModel -elements u_phy \
   -supply_map {{PDREG.ss_regin PDDISP.aon} \
-               {PDREG.ss_regout PDDISP.primary}}
+               {PDREG.ss_regout PDDISP.primary}} \
   -port_map {regCtrl lp_regCtrl}
 
 # Update power state of PDDISP with state of PDPHY.
