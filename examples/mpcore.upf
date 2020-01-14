@@ -1,0 +1,3 @@
+set_design_top mpcore
+source mpcore_constraints.upf
+source mpcore_configuration.upf

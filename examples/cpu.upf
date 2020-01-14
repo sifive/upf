@@ -1,0 +1,4 @@
+set_design_top cpu
+load_upf cpu_constraints.upf
+load_upf cpu_configuration.upf
+load_upf cpu_implementation.upf

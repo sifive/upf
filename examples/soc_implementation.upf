@@ -150,7 +150,7 @@ add_power_state -supply PDDISP.primary -update \
               {power==OFF           && ground=={FULL_ON 0}}}
 
 # PDMPCORE
-Set_scope u_mpcore
+set_scope u_mpcore
 add_power_state -supply u_mpcore/PDMPCORE.primary -update \
   -state {ON.NOM -supply_expr \
               {power=={FULL_ON 0.70} && ground=={FULL_ON 0}}} \
@@ -160,7 +160,7 @@ add_power_state -supply u_mpcore/PDMPCORE.primary -update \
               {power=={FULL_ON 0.55} && ground=={FULL_ON 0}}}} \
   -state {OFF -supply_expr \
               {power==OFF        c   && ground=={FULL_ON 0}}}
-Set_scope ..
+set_scope ..
 
 set_variation -supply {u_mpcore/PDMPCORE.primary} -range {0.95 1.1}
 
