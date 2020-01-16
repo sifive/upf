@@ -59,7 +59,7 @@ create_power_state_group L1MEMS
 # Create power states for the group created.
 # Power state of the group is such that each of the instance
 # in the group are in the same power state as the group itself.
-add_power_state –group L1MEMS \
+add_power_state -group L1MEMS \
   -state {ON  -logic_expr {u_l1tag_ram==ON  && u_l1data_ram==ON }} \
   -state {RET -logic_expr {u_l1tag_ram==RET && u_l1data_ram==RET}} \
   -state {OFF -logic_expr {u_l1tag_ram==OFF && u_l1data_ram==OFF}}

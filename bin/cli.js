@@ -4,41 +4,14 @@
 let fs = require('fs-extra');
 let { Tcl } = require('tcl-js');
 let Ajv = require('ajv');
+let yargs = require('yargs');
+let path = require('path');
 
-let set_level_shifter = require('../lib/set_level_shifter.js');
-let dummy = require('../lib/dummy.js');
-
-let index = {
-  set_scope: dummy,
-  set_port_attributes: dummy,
-  set_retention_elements: dummy,
-  set_retention: dummy,
-  set_design_attributes: dummy,
-  set_isolation: dummy,
-  set_level_shifter,
-  set_variation: dummy,
-  set_correlated: dummy,
-
-  create_supply_port: dummy,
-  create_supply_set: dummy,
-  create_logic_port: dummy,
-  create_supply_net: dummy,
-  create_logic_net: dummy,
-  create_power_state_group: dummy,
-  create_power_switch: dummy,
-  create_power_domain: dummy,
-
-  define_power_model: dummy,
-  find_objects: dummy,
-  add_power_state: dummy,
-  load_upf: dummy,
-  apply_power_model: dummy,
-  associate_supply_set: dummy,
-  connect_supply_net: dummy,
-  connect_logic_net: dummy
-};
+let lib = require('../lib/');
 
 let tcl = new Tcl();
+
+let index = lib.procs;
 
 Object.keys(index).map(key => {
   let handler = index[key].handler;
@@ -48,34 +21,34 @@ Object.keys(index).map(key => {
   tcl.addAdvancedProcedure(key, handler(validator));
 });
 
-// PHY3TX2RX0P8V.upf
-let flist = `
-MEMSRAM_1024X32.upf
-
-cpu_constraints.upf
-cpu_configiration.upf
-cpu_implementation.upf
-
-mpcore_constraints.upf
-mpcore_configuration.upf
-
-display_constraints.upf
-display_configuration.upf
-
-soc_constraints.upf
-soc_configuration.upf
-soc_implementation.upf
-`.trim().split(/\s+/).map(e => './examples/' + e);
-
-let main = async () => {
-  for (let fname of flist) {
-    console.log(fname);
-    let body = await fs.readFile(fname, 'utf8');
-    await tcl.run(body).catch(err => {
-      console.error(fname);
-      console.error(err);
-    });
-  }
+let readHandler = async args => {
+  let fname = args.filename;
+  let fullName = path.resolve(process.cwd(), fname);
+  let rootPath = path.dirname(fullName);
+  tcl.globalScope.rootPath = rootPath;
+  tcl.globalScope.result = {
+    designs: {},
+    power_domain: {}
+  };
+  let body = await fs.readFile(fname, 'utf8');
+  console.log('load: ' + fullName + ' : ' + body.length);
+  await tcl.run(body);
+  console.log(JSON.stringify(tcl.globalScope.result, null, 2));
 };
 
-main();
+yargs
+  .scriptName('upf')
+  .command({
+    command: 'read <filename>',
+    desc: 'read UPF',
+    handler: readHandler,
+    builder: yargs => {
+      yargs.positional('filename', {
+        type: 'string',
+        desc: 'document file'
+      });
+    }
+  })
+  .demandCommand(1, 'You need at least one command before moving on')
+  .help()
+  .argv;
