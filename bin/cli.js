@@ -18,7 +18,7 @@ Object.keys(index).map(key => {
   let schema = index[key].schema;
   let ajv = new Ajv();
   let validator = ajv.compile(schema);
-  tcl.addAdvancedProcedure(key, handler(validator));
+  tcl.addAdvancedProcedure(key, handler(validator, key));
 });
 
 let readHandler = async args => {
@@ -28,7 +28,9 @@ let readHandler = async args => {
   tcl.globalScope.rootPath = rootPath;
   tcl.globalScope.result = {
     designs: {},
-    power_domain: {}
+    power_domain: {},
+    logic_ports: {},
+    supply: {}
   };
   let body = await fs.readFile(fname, 'utf8');
   console.log('load: ' + fullName + ' : ' + body.length);
