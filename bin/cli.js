@@ -8,6 +8,7 @@ let yargs = require('yargs');
 let path = require('path');
 
 let lib = require('../lib/');
+let targs = require('../lib/targs.js');
 
 let tcl = new Tcl();
 
@@ -18,7 +19,18 @@ Object.keys(index).map(key => {
   let schema = index[key].schema;
   let ajv = new Ajv();
   let validator = ajv.compile(schema);
-  tcl.addAdvancedProcedure(key, handler(validator, key));
+  tcl.addAdvancedProcedure(key, (interp, args) => {
+    let obj = targs(key, args);
+    if (!validator(obj)) {
+      console.error(key, obj, validator.errors);
+      return;
+    }
+    try {
+      return handler(interp, obj, key);
+    } catch (err) {
+      console.error(key, obj, err);
+    }
+  });
 });
 
 let readHandler = async args => {
