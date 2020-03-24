@@ -1,12 +1,14 @@
 'use strict';
 
-let lib = require('../lib');
+let chai = require('chai');
+let lib = require('../lib/');
+
+const expect = chai.expect;
 
 describe('basic', () => {
-  it('1', async () => {
-    let tcl = new lib.Tcl;
-    await tcl.run('set w "World!"');
-    await tcl.run('puts "Hello $w"');
+  it('procs is object', done => {
+    expect(lib.procs).to.be.a('object');
+    done();
   });
 });
 

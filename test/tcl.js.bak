@@ -1,0 +1,27 @@
+'use strict';
+
+// let chai = require('chai');
+let interp = require('../amd/interp.js');
+
+// const expect = chai.expect;
+
+describe('interp', () => {
+  it('simple', done => {
+    let $ = interp();
+    $.registerCommand('set_top', function (args) {
+      // console.log(JSON.stringify(args[1].jsval, null, 2));
+      return args[2];
+    });
+    $.TclEval(`
+# comment
+set x 3;
+set l1 [list [expr 1+2*$x] a b 0]
+set res [set_top $l1 $x]
+`, function (res) {
+      console.log(res.result.jsval);
+    });
+    done();
+  });
+});
+
+/* eslint-env mocha */
