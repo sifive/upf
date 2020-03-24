@@ -1,4 +1,0 @@
-set_design_top soc
-source soc_constraints.upf
-source soc_configuration.upf
-source soc_implementation.upf

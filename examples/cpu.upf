@@ -1,4 +1,0 @@
-set_design_top cpu
-source cpu_constraints.upf
-source cpu_configuration.upf
-source cpu_implementation.upf

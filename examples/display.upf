@@ -1,3 +1,0 @@
-set_design_top display
-source display_constraints.upf
-source display_configuration.upf
